@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Notes &amp; PYQs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;800&family=Caveat:wght@600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #F2F6FC; --rule: #CBD8EE; --margin: #E4575F;
+            --ink: #16213E; --soft: #5B6784; --card: #FFFFFF;
+            --hl: #FFE45E; --ok: #1E8E5A; --bad: #D8434B; --focus: #2F6BFF;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; }
+        body {
+            min-height: 100vh; padding: 32px 20px 56px 72px; color: var(--ink);
+            background-color: var(--paper);
+            background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
+            font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+        }
+        body::before {
+            content: ""; position: fixed; top: 0; bottom: 0; left: 48px;
+            width: 2px; background: var(--margin); opacity: .7;
+        }
+        main { max-width: 980px; margin: 0 auto; }
+
+        /* header */
+        header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+        h1 { margin: 0; font-size: 2.4rem; line-height: 1; font-weight: 800; letter-spacing: -.03em; }
+        h1 span { background: linear-gradient(transparent 58%, var(--hl) 58% 92%, transparent 92%); padding: 0 4px; }
+        .chip {
+            padding: 7px 14px; border: 1.5px solid var(--ink); border-radius: 99px; background: #fff;
+            font-size: .9rem; font-weight: 500; box-shadow: 0 3px 0 var(--ink);
+        }
+
+        /* upload pass */
+        .pass {
+            background: var(--card); border-radius: 20px; padding: 22px; margin-bottom: 26px;
+            box-shadow: 0 0 0 1.5px var(--ink), 0 14px 30px -18px rgba(22, 33, 62, .5);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+        }
+        .pass h2 { grid-column: 1 / -1; margin: 0; font-size: 1.25rem; font-weight: 800; }
+        form { display: contents; }
+        .fields { display: grid; gap: 12px; align-content: start; }
+        label.f { display: grid; gap: 4px; color: var(--soft); font-size: .85rem; font-weight: 500; }
+        input[type=text] {
+            width: 100%; padding: 10px 12px; font: inherit; font-size: 1rem; color: var(--ink);
+            background: #fff; border: 1.5px solid var(--ink); border-radius: 10px;
+        }
+        .seg { display: flex; gap: 8px; }
+        .seg label { flex: 1; cursor: pointer; }
+        .seg input { position: absolute; opacity: 0; pointer-events: none; }
+        .seg span {
+            display: block; text-align: center; padding: 9px; border: 1.5px solid var(--ink);
+            border-radius: 10px; font-weight: 800; background: #fff;
+        }
+        .seg input:checked + span { background: var(--hl); box-shadow: 0 3px 0 var(--ink); }
+        .seg input:focus-visible + span { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+        .drop {
+            display: grid; place-items: center; text-align: center; gap: 6px; padding: 18px; min-height: 180px;
+            border: 2.5px dashed var(--ink); border-radius: 16px; background: var(--paper); cursor: pointer;
+            transition: background .15s;
+        }
+        .drop.over { background: #FFF6BF; }
+        .drop b { font-size: 1.1rem; }
+        .drop small { color: var(--soft); }
+        .drop .picked { font-family: 'Caveat', cursive; font-size: 1.4rem; word-break: break-all; }
+        .drop input { display: none; }
+
+        .actions { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; }
+        #btn {
+            padding: 12px 26px; font: inherit; font-size: 1.05rem; font-weight: 800; color: #fff;
+            background: var(--ink); border: 0; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 0 #0A1124;
+        }
+        #btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0A1124; }
+        #btn:disabled { opacity: .6; cursor: wait; }
+        #msg { font-family: 'Caveat', cursive; font-size: 1.4rem; }
+        #msg.ok { color: var(--ok); } #msg.bad { color: var(--bad); }
+        input:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+        /* toolbar */
+        .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px; }
+        .chips { display: flex; gap: 8px; }
+        .chips button {
+            padding: 8px 16px; font: inherit; font-weight: 800; cursor: pointer; background: #fff;
+            border: 1.5px solid var(--ink); border-radius: 99px;
+        }
+        .chips button.on { background: var(--ink); color: #fff; }
+        #search { flex: 1; min-width: 180px; }
+
+        /* note cards */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+        .note {
+            display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--card);
+            border: 1.5px solid var(--ink); border-radius: 16px; box-shadow: 4px 4px 0 var(--ink);
+        }
+        .note:nth-child(3n+1) { transform: rotate(-.6deg); }
+        .note:nth-child(3n+2) { transform: rotate(.5deg); }
+        .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .ext {
+            min-width: 46px; padding: 4px 8px; text-align: center; color: #fff; font-size: .75rem;
+            font-weight: 800; letter-spacing: .04em; border-radius: 8px; background: var(--soft);
+        }
+        .ext.pdf { background: #D8434B; } .ext.docx { background: #2F6BFF; }
+        .ext.pptx { background: #E8803A; } .ext.png, .ext.jpg, .ext.jpeg { background: #1E8E5A; }
+        .tag { padding: 2px 10px; border: 1.5px solid var(--ink); border-radius: 99px; font-size: .75rem; font-weight: 800; background: var(--hl); }
+        .tag.PYQ { background: #FFC2C6; }
+        .note h3 { margin: 0; font-size: 1.15rem; line-height: 1.25; font-weight: 800; overflow-wrap: anywhere; }
+        .meta { color: var(--soft); font-size: .88rem; }
+        .dl {
+            margin-top: auto; text-align: center; padding: 9px; color: var(--ink); text-decoration: none; font-weight: 800;
+            border: 1.5px solid var(--ink); border-radius: 10px; background: #fff;
+        }
+        .dl:hover { background: var(--hl); }
+        .empty { grid-column: 1 / -1; padding: 40px 10px; text-align: center; font-family: 'Caveat', cursive; font-size: 1.7rem; color: var(--soft); }
+
+        @media (max-width: 700px) {
+            body { padding: 24px 14px 48px 30px; }
+            body::before { left: 16px; }
+            .pass { grid-template-columns: 1fr; }
+            h1 { font-size: 1.9rem; }
+        }
+        @media (prefers-reduced-motion: reduce) { .note { transform: none !important; } }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <h1><span>Notes</span> &amp; PYQs</h1>
+        <div class="chip" id="who">Checking login…</div>
+    </header>
+
+    <section class="pass">
+        <h2>Share something with your batch</h2>
+        <form id="form">
+            <div class="fields">
+                <label class="f">Title
+                    <input type="text" id="title" placeholder="DBMS Unit 3 notes" maxlength="120" required>
+                </label>
+                <label class="f">Subject
+                    <input type="text" id="subject" list="subjects" placeholder="DBMS" maxlength="60" required>
+                    <datalist id="subjects"></datalist>
+                </label>
+                <div class="seg">
+                    <label><input type="radio" name="kind" value="NOTES" checked><span>Notes</span></label>
+                    <label><input type="radio" name="kind" value="PYQ"><span>PYQ</span></label>
+                </div>
+            </div>
+
+            <label class="drop" id="drop">
+                <input type="file" id="file" accept=".pdf,.png,.jpg,.jpeg,.docx,.pptx" required>
+                <b id="dropTitle">Drop a file here or click to choose</b>
+                <small>pdf, png, jpg, docx, pptx · up to 10 MB</small>
+                <span class="picked" id="picked"></span>
+            </label>
+
+            <div class="actions">
+                <button id="btn" type="submit">Upload</button>
+                <span id="msg" aria-live="polite"></span>
+            </div>
+        </form>
+    </section>
+
+    <div class="bar">
+        <div class="chips" id="chips">
+            <button type="button" data-k="ALL" class="on">All</button>
+            <button type="button" data-k="NOTES">Notes</button>
+            <button type="button" data-k="PYQ">PYQ</button>
+        </div>
+        <input type="text" id="search" placeholder="Search by title or subject…">
+    </div>
+
+    <section class="grid" id="grid"></section>
+</main>
+
+<script>
+    const $ = id => document.getElementById(id);
+    let all = [], kind = 'ALL';
+
+    function el(tag, cls, text) {
+        const e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (text !== undefined) e.textContent = text;
+        return e;
+    }
+
+    function say(text, type) { $('msg').textContent = text; $('msg').className = type || ''; }
+
+    // everything is built with textContent, so a title like "<script>" can never run
+    function render() {
+        const q = $('search').value.trim().toLowerCase();
+        const shown = all.filter(n =>
+            (kind === 'ALL' || n.kind === kind) &&
+            (n.title + ' ' + n.subject).toLowerCase().includes(q));
+
+        const grid = $('grid');
+        grid.textContent = '';
+        if (!shown.length) {
+            grid.append(el('div', 'empty', all.length ? 'Nothing matches that search.' : 'No notes yet. Upload the first one!'));
+            return;
+        }
+        for (const n of shown) {
+            const ext = n.fileName.split('.').pop().toLowerCase();
+            const card = el('article', 'note');
+            const top = el('div', 'top');
+            top.append(el('span', 'ext ' + ext, ext.toUpperCase()), el('span', 'tag ' + n.kind, n.kind));
+            const dl = el('a', 'dl', 'Download');
+            dl.href = '/api/notes/' + n.id + '/download';
+            card.append(top, el('h3', '', n.title),
+                el('div', 'meta', n.subject + ' · user ' + n.uploaderId + ' · ' + n.uploadedAt.slice(0, 10)), dl);
+            grid.append(card);
+        }
+    }
+
+    async function load() {
+        const res = await fetch('/api/notes');
+        if (res.status === 401) { location.href = '/login.html'; return; }
+        all = await res.json();
+        $('subjects').textContent = '';
+        for (const s of [...new Set(all.map(n => n.subject))]) {
+            const o = el('option'); o.value = s; $('subjects').append(o);
+        }
+        render();
+    }
+
+    (async () => {
+        const me = await fetch('/api/notes/me');
+        if (me.status === 401) { location.href = '/login.html'; return; }
+        $('who').textContent = 'Logged in · user ' + (await me.json()).userId;
+        load();
+    })();
+
+    $('chips').onclick = e => {
+        if (!e.target.dataset.k) return;
+        kind = e.target.dataset.k;
+        for (const b of $('chips').children) b.classList.toggle('on', b === e.target);
+        render();
+    };
+    $('search').oninput = render;
+
+    // drag and drop
+    const drop = $('drop'), file = $('file');
+    function showPicked() { $('picked').textContent = file.files[0] ? file.files[0].name : ''; }
+    file.onchange = showPicked;
+    ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', e => { file.files = e.dataTransfer.files; showPicked(); });
+
+    $('form').onsubmit = async e => {
+        e.preventDefault();
+        $('btn').disabled = true;
+        say('Uploading…');
+        try {
+            const fd = new FormData();
+            fd.append('title', $('title').value);
+            fd.append('subject', $('subject').value);
+            fd.append('kind', document.querySelector('input[name=kind]:checked').value);
+            fd.append('file', file.files[0]);
+            const res = await fetch('/api/notes/upload', { method: 'POST', body: fd });
+            if (res.status === 401) { location.href = '/login.html'; return; }
+            const data = await res.json();
+            if (res.ok) { say('Uploaded!', 'ok'); $('form').reset(); showPicked(); load(); }
+            else say(data.error || 'Upload failed', 'bad');
+        } catch (err) {
+            say('Could not reach the server.', 'bad');
+        } finally {
+            $('btn').disabled = false;
+        }
+    };
+</script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Face login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;800&family=Caveat:wght@600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --paper: #F2F6FC; --rule: #CBD8EE; --margin: #E4575F;
+            --ink: #16213E; --soft: #5B6784; --card: #FFFFFF;
+            --hl: #FFE45E; --ok: #1E8E5A; --bad: #D8434B; --focus: #2F6BFF;
+            --mark: #FFE45E;
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; }
+
+        /* notebook paper: ruled lines + red margin */
+        body {
+            min-height: 100vh; display: grid; place-items: center;
+            padding: 32px 16px 32px 72px;
+            background-color: var(--paper);
+            background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
+            color: var(--ink);
+            font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+        }
+        body::before {
+            content: ""; position: fixed; top: 0; bottom: 0; left: 48px;
+            width: 2px; background: var(--margin); opacity: .7;
+        }
+
+        /* the student pass */
+        .pass {
+            position: relative; width: min(440px, 100%);
+            background: var(--card); border-radius: 22px; padding: 38px 24px 24px;
+            box-shadow: 0 0 0 1.5px var(--ink), 0 18px 40px -18px rgba(22, 33, 62, .45);
+            transform: rotate(-1.2deg);
+        }
+        .pass::before {
+            content: ""; position: absolute; top: 12px; left: 50%;
+            width: 64px; height: 10px; margin-left: -32px; border-radius: 6px;
+            background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--ink);
+        }
+        h1 { margin: 6px 0; font-size: 1.9rem; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; }
+        .sub { margin: 0 0 18px; max-width: 36ch; color: var(--soft); font-size: .98rem; line-height: 1.45; }
+
+        /* camera window */
+        .frame { position: relative; aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; background: #DFE7F5; }
+        video { display: block; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .frame::after {
+            content: ""; position: absolute; inset: 14px; pointer-events: none;
+            --c: var(--hl);
+            background:
+                    linear-gradient(var(--c), var(--c)) top left / 28px 3px,
+                    linear-gradient(var(--c), var(--c)) top left / 3px 28px,
+                    linear-gradient(var(--c), var(--c)) top right / 28px 3px,
+                    linear-gradient(var(--c), var(--c)) top right / 3px 28px,
+                    linear-gradient(var(--c), var(--c)) bottom left / 28px 3px,
+                    linear-gradient(var(--c), var(--c)) bottom left / 3px 28px,
+                    linear-gradient(var(--c), var(--c)) bottom right / 28px 3px,
+                    linear-gradient(var(--c), var(--c)) bottom right / 3px 28px;
+            background-repeat: no-repeat;
+        }
+        .scan {
+            display: none; position: absolute; left: 0; right: 0; top: 6%; height: 3px;
+            background: var(--hl); box-shadow: 0 0 14px 4px rgba(255, 228, 94, .8);
+        }
+        .frame.scanning .scan { display: block; animation: sweep 1s ease-in-out infinite alternate; }
+        @keyframes sweep { from { top: 6%; } to { top: 94%; } }
+
+        /* ink stamp shown after the result */
+        .stamp {
+            position: absolute; left: 50%; top: 50%; padding: 8px 18px;
+            border: 3px solid currentColor; border-radius: 10px;
+            background: rgba(255, 255, 255, .88); font-size: 1.5rem; font-weight: 800;
+            opacity: 0; pointer-events: none; white-space: nowrap;
+            transform: translate(-50%, -50%) rotate(-9deg);
+        }
+        .stamp.ok { color: var(--ok); }
+        .stamp.bad { color: var(--bad); }
+        .stamp.show { animation: thud .35s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+        @keyframes thud {
+            from { opacity: 0; transform: translate(-50%, -50%) rotate(-9deg) scale(1.6); }
+            to   { opacity: 1; transform: translate(-50%, -50%) rotate(-9deg) scale(1); }
+        }
+
+        /* direction hint shown while the user turns their head */
+        .arrow {
+            position: absolute; top: 50%; display: none; pointer-events: none;
+            transform: translateY(-50%); font-size: 4rem; font-weight: 800; line-height: 1;
+            color: var(--hl); text-shadow: 0 2px 14px rgba(22, 33, 62, .8);
+        }
+        .arrow.on { display: block; }
+        .arrow.left { left: 24px; }
+        .arrow.right { right: 24px; }
+        .count {
+            position: absolute; inset: 0; display: none; place-items: center;
+            font-size: 6rem; font-weight: 800; color: #fff;
+            text-shadow: 0 2px 18px rgba(22, 33, 62, .8); pointer-events: none;
+        }
+        .count.on { display: grid; }
+
+        /* controls */
+        .row { display: flex; gap: 12px; align-items: end; margin-top: 18px; }
+        label { display: grid; gap: 4px; color: var(--soft); font-size: .85rem; font-weight: 500; }
+        input {
+            width: 96px; padding: 10px 12px; font: inherit; font-size: 1.05rem; color: var(--ink);
+            background: #fff; border: 1.5px solid var(--ink); border-radius: 10px;
+        }
+        #btn {
+            flex: 1; padding: 12px 18px; font: inherit; font-size: 1.05rem; font-weight: 800;
+            color: #fff; background: var(--ink); border: 0; border-radius: 12px; cursor: pointer;
+            box-shadow: 0 4px 0 #0A1124;
+        }
+        #btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0A1124; }
+        #btn:disabled { opacity: .6; cursor: wait; }
+        input:focus-visible, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+        /* handwritten status note with highlighter */
+        .note { margin: 18px 0 0; min-height: 2.8em; font-family: 'Caveat', 'Segoe Print', cursive; font-size: 1.45rem; line-height: 1.3; }
+        .note span {
+            background-image: linear-gradient(transparent 55%, var(--mark) 55% 92%, transparent 92%);
+            -webkit-box-decoration-break: clone; box-decoration-break: clone;
+        }
+        .note.ok { --mark: #B8EBCF; }
+        .note.bad { --mark: #FFC2C6; }
+
+        @media (max-width: 560px) {
+            body { padding-left: 30px; }
+            body::before { left: 16px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .frame.scanning .scan { animation: none; }
+            .stamp.show { animation: none; opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+<main class="pass">
+    <h1>Face login</h1>
+    <p class="sub">Enter your user ID, look straight, then turn your head once. We match your face with the one you enrolled.</p>
+
+    <div class="frame" id="frame">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="count" id="count"></div>
+        <div class="arrow" id="arrow"></div>
+        <div class="scan"></div>
+        <div class="stamp" id="stamp"></div>
+    </div>
+
+    <div class="row">
+        <label>User ID
+            <input id="userId" type="number" min="1" value="1">
+        </label>
+        <button id="btn" type="button">Log in with my face</button>
+    </div>
+
+    <p class="note" id="note" aria-live="polite"><span id="noteText"></span></p>
+    <canvas id="canvas" hidden></canvas>
+</main>
+
+<script>
+    const $ = id => document.getElementById(id);
+    const video = $('video'), canvas = $('canvas'), btn = $('btn'), frame = $('frame');
+    const stamp = $('stamp'), note = $('note'), noteText = $('noteText'), userId = $('userId');
+    const count = $('count'), arrow = $('arrow');
+
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+
+    function say(text, kind) {
+        noteText.textContent = text;
+        note.className = 'note ' + (kind || '');
+    }
+
+    function showStamp(text, kind) {
+        stamp.textContent = text;
+        stamp.className = 'stamp ' + kind;
+        void stamp.offsetWidth;            // restart the animation
+        stamp.classList.add('show');
+    }
+
+    // current camera frame as a JPEG (the saved frame is not mirrored, only the preview is)
+    function snap() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    }
+
+    async function countdown(seconds) {
+        for (let n = seconds; n > 0; n--) {
+            count.textContent = n;
+            count.classList.add('on');
+            await wait(1000);
+        }
+        count.classList.remove('on');
+    }
+
+    say('Starting camera…');
+    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+        .then(stream => {
+            video.srcObject = stream;
+            say('Enter your user ID, then press Log in with my face.');
+        })
+        .catch(() => say('Camera is blocked. Allow camera access in the address bar, then reload.', 'bad'));
+
+    btn.onclick = async () => {
+        if (!video.videoWidth) { say('Camera is not ready yet. Wait a second and try again.', 'bad'); return; }
+        if (!userId.value) { say('Enter a user ID first.', 'bad'); return; }
+
+        stamp.className = 'stamp';
+        btn.disabled = true;
+        try {
+            // 1. the server decides which way to turn (random, so a recording cannot be replayed)
+            const ch = await (await fetch('/api/face/liveness/challenge')).json();
+            const dir = ch.challenge.toLowerCase();
+
+            // 2. straight photo
+            say('Look straight at the camera.');
+            await countdown(3);
+            const center = await snap();
+
+            // 3. turned photo
+            say('Now turn your head to your ' + dir + ' and hold it.');
+            arrow.textContent = dir === 'left' ? '←' : '→';
+            arrow.className = 'arrow on ' + dir;
+            await countdown(3);
+            arrow.className = 'arrow';
+            const turn = await snap();
+
+            // 4. send both photos with the token
+            frame.classList.add('scanning');
+            say('Checking…');
+            const fd = new FormData();
+            fd.append('userId', userId.value);
+            fd.append('token', ch.token);
+            fd.append('center', center, 'center.jpg');
+            fd.append('turn', turn, 'turn.jpg');
+            const res = await fetch('/api/face/login-live', { method: 'POST', body: fd });
+            const data = await res.json();
+
+            if (res.ok) {
+                say('Welcome, user ' + userId.value + '.', 'ok');
+                showStamp('Logged in', 'ok');
+                setTimeout(() => { location.href = '/notes.html'; }, 900);
+            } else {
+                let text = data.error || 'Something went wrong.';
+                say(text, 'bad');
+                showStamp(res.status === 401 ? 'Login failed' : 'Try again', 'bad');
+            }
+        } catch (e) {
+            say('Could not reach the server. Is the app running on port 8080?', 'bad');
+        } finally {
+            frame.classList.remove('scanning');
+            count.classList.remove('on');
+            arrow.className = 'arrow';
+            btn.disabled = false;
+        }
+    };
+</script>
+</body>
+</html>

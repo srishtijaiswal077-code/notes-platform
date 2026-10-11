@@ -19,8 +19,16 @@ import java.nio.file.StandardCopyOption;
 @Service
 public class FaceService {
 
+    /** What we learn from one photo: who it is (embedding) and how far the head is turned (yaw). */
+    public record FaceResult(float[] embedding, double yaw) {}
+
     private FaceDetectorYN detector;
     private FaceRecognizerSF recognizer;
+    private final LivenessService livenessService;
+
+    public FaceService(LivenessService livenessService) {
+        this.livenessService = livenessService;
+    }
 
     @PostConstruct
     public void init() throws IOException {
@@ -41,17 +49,17 @@ public class FaceService {
         return tmp.toString();
     }
 
-    public synchronized float[] getEmbedding(byte[] imageBytes)  {
+    /** Exactly one face required. Returns its embedding and yaw ratio. */
+    public synchronized FaceResult analyze(byte[] imageBytes) {
         Mat img = Imgcodecs.imdecode(new MatOfByte(imageBytes), Imgcodecs.IMREAD_COLOR);
         if (img.empty()) throw new IllegalArgumentException("Invalid image");
 
-        // badi photo ko chhota karo (max 640 px)
+        // shrink big photos (max 640 px)
         int maxSide = Math.max(img.cols(), img.rows());
         if (maxSide > 640) {
             double scale = 640.0 / maxSide;
             Imgproc.resize(img, img, new Size(img.cols() * scale, img.rows() * scale));
         }
-        System.out.println("Image size: " + img.cols() + "x" + img.rows());
 
         detector.setInputSize(img.size());
         Mat faces = new Mat();
@@ -59,6 +67,11 @@ public class FaceService {
 
         if (faces.rows() == 0) throw new IllegalArgumentException("No face found");
         if (faces.rows() > 1) throw new IllegalArgumentException("Multiple faces found");
+
+        float[] row = new float[15];
+        faces.get(0, 0, row);
+        double yaw = livenessService.yaw(row);
+        System.out.printf("yaw ratio = %.3f%n", yaw);
 
         Mat aligned = new Mat();
         recognizer.alignCrop(img, faces.row(0), aligned);
@@ -68,7 +81,12 @@ public class FaceService {
 
         float[] emb = new float[128];
         feature.get(0, 0, emb);
-        return emb;
+        return new FaceResult(emb, yaw);
+    }
+
+    // kept so the old /enroll endpoint still works
+    public float[] getEmbedding(byte[] imageBytes) {
+        return analyze(imageBytes).embedding();
     }
 
     public double compare(float[] a, float[] b) {
