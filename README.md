@@ -6,8 +6,9 @@ A college notes and PYQ (previous year question paper) sharing platform where **
 
 ![Face enrollment](docs/images/enroll.png)
 ![Phone photo rejected by liveness check](docs/images/spoof-rejected.png)
-![Face login](docs/images/login.png)
+![Face login](docs/images/face%20login.png)
 ![Notes page](docs/images/notes.png)
+[Watch the 14-second demo](docs/demo.mp4)
 
 ## Why this project
 
