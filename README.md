@@ -22,6 +22,7 @@ Most notes-sharing apps are open to fake and duplicate accounts. This project so
 - **Face login**: 1-to-1 match against the stored face of that user ID, after liveness passes. Failure message is generic, so user IDs cannot be probed.
 - **Notes and PYQ sharing**: upload, list, search, filter and download. All endpoints need a face-login session.
 - **Safe uploads**: allowed extensions only (pdf, png, jpg, jpeg, docx, pptx), size limit, and random server-side file names.
+- “AI summary: one-click summary of PDF/DOCX notes using Gemini, saved in DB so each note is summarized only once”
 
 ## How it works
 
@@ -45,6 +46,7 @@ The order of checks matters: liveness always runs **before** any account lookup,
 - PostgreSQL
 - OpenCV (Java bindings), YuNet face detector, SFace face recognition model
 - HTML, CSS and vanilla JavaScript (camera via `getUserMedia`)
+- Gemini API, Apache POI
 
 ## Setup
 
@@ -63,6 +65,10 @@ The order of checks matters: liveness always runs **before** any account lookup,
     - `http://localhost:8080/enroll.html` to enroll a face
     - `http://localhost:8080/login.html` to log in with the face
     - `http://localhost:8080/notes.html` for the notes page (needs login)
+
+7. Get a free Gemini API key from Google AI Studio and set it:
+   - Windows: setx GEMINI_API_KEY "your_key" (then reopen the terminal/IDE)
+   - Or add gemini.api-key=your_key to application-local.properties
 
 ## Testing done (manual)
 
