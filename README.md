@@ -22,7 +22,7 @@ Most notes-sharing apps are open to fake and duplicate accounts. This project so
 - **Face login**: 1-to-1 match against the stored face of that user ID, after liveness passes. Failure message is generic, so user IDs cannot be probed.
 - **Notes and PYQ sharing**: upload, list, search, filter and download. All endpoints need a face-login session.
 - **Safe uploads**: allowed extensions only (pdf, png, jpg, jpeg, docx, pptx), size limit, and random server-side file names.
-- “AI summary: one-click summary of PDF/DOCX notes using Gemini, saved in DB so each note is summarized only once”
+- - **AI note summary**: one click gives a short summary of PDF and DOCX notes using the Gemini API. The summary is saved in the database, so each note is summarized only once.
 
 ## How it works
 
@@ -36,7 +36,7 @@ Enroll / Login
        -> login: match with stored embedding, then create session
 Notes (session required)
   POST /api/notes/upload, GET /api/notes, GET /api/notes/{id}/download
-```
+  POST /api/notes/{id}/summary -> text extracted (PDF/DOCX) -> Gemini -> summary saved in DB
 
 The order of checks matters: liveness always runs **before** any account lookup, so an attacker without a live face learns nothing about which IDs exist.
 
@@ -57,23 +57,25 @@ The order of checks matters: liveness always runs **before** any account lookup,
    ```
 3. Check `application.properties` for the datasource URL (`jdbc:postgresql://localhost:5432/notesapp`) and username.
 4. Make sure the YuNet and SFace `.onnx` model files are in `src/main/resources/models/`.
-5. Run:
+
+5. Get a free Gemini API key from Google AI Studio and set it:
+   - Windows: `setx GEMINI_API_KEY "your_key"` (then reopen the terminal/IDE)
+   - Or add `gemini.api-key=your_key` to `application-local.properties`
+
+6. Run:
    ```
    ./mvnw spring-boot:run
    ```
-6. Open:
+7. Open:
     - `http://localhost:8080/enroll.html` to enroll a face
     - `http://localhost:8080/login.html` to log in with the face
     - `http://localhost:8080/notes.html` for the notes page (needs login)
 
-7. Get a free Gemini API key from Google AI Studio and set it:
-   - Windows: setx GEMINI_API_KEY "your_key" (then reopen the terminal/IDE)
-   - Or add gemini.api-key=your_key to application-local.properties
 
 ## Testing done (manual)
 
 | Scenario | Expected | Result |
-|---|---|---|
+|---|---|---|s
 | Correct head turn | Enrolled / logged in | Pass |
 | Turn the wrong way | Rejected | Pass |
 | No head turn | Rejected | Pass |
