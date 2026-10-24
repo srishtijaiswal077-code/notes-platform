@@ -117,7 +117,15 @@
         }
         .dl:hover { background: var(--hl); }
         .empty { grid-column: 1 / -1; padding: 40px 10px; text-align: center; font-family: 'Caveat', cursive; font-size: 1.7rem; color: var(--soft); }
-
+        /* AI summary */
+        .sum-btn {
+            padding: 9px; font: inherit; font-weight: 800; cursor: pointer; background: var(--hl);
+            border: 1.5px solid var(--ink); border-radius: 10px;
+        }
+        .sum-btn:disabled { opacity: .6; cursor: wait; }
+        .sum-box { white-space: pre-wrap; font-size: .92rem; line-height: 1.45; padding: 10px; background: var(--paper); border-radius: 10px; }
+        .sum-box:empty { display: none; }
+        .sum-box.bad { color: var(--bad); }
         @media (max-width: 700px) {
             body { padding: 24px 14px 48px 30px; }
             body::before { left: 16px; }
@@ -189,6 +197,29 @@
     }
 
     function say(text, type) { $('msg').textContent = text; $('msg').className = type || ''; }
+    async function summarize(n, btn, box) {
+        btn.disabled = true;
+        box.className = 'sum-box';
+        box.textContent = 'Generating summary…';
+        try {
+            const res = await fetch('/api/notes/' + n.id + '/summary', { method: 'POST' });
+            if (res.status === 401) { location.href = '/login.html'; return; }
+            const data = await res.json();
+            if (res.ok) {
+                n.summary = data.summary;      // list me yaad rakho, taaki search/filter ke baad bhi dikhe
+                box.textContent = data.summary;
+                btn.remove();
+            } else {
+                box.className = 'sum-box bad';
+                box.textContent = data.error || 'Kuch galat hua';
+                btn.disabled = false;
+            }
+        } catch (err) {
+            box.className = 'sum-box bad';
+            box.textContent = 'Server tak nahi pahunch paye';
+            btn.disabled = false;
+        }
+    }
 
     // everything is built with textContent, so a title like "<script>" can never run
     function render() {
@@ -211,7 +242,20 @@
             const dl = el('a', 'dl', 'Download');
             dl.href = '/api/notes/' + n.id + '/download';
             card.append(top, el('h3', '', n.title),
-                el('div', 'meta', n.subject + ' · user ' + n.uploaderId + ' · ' + n.uploadedAt.slice(0, 10)), dl);
+                el('div', 'meta', n.subject + ' · user ' + n.uploaderId + ' · ' + n.uploadedAt.slice(0, 10)));
+
+            // AI summary PDF aur DOCX notes ke liye
+            if (ext === 'pdf' || ext === 'docx') {
+                const box = el('div', 'sum-box', n.summary || '');
+                card.append(box);
+                if (!n.summary) {            // summary pehle se bani ho to button ki zaroorat nahi
+                    const sb = el('button', 'sum-btn', '✨ Summarize');
+                    sb.type = 'button';
+                    sb.onclick = () => summarize(n, sb, box);
+                    card.insertBefore(sb, box);
+                }
+            }
+            card.append(dl);
             grid.append(card);
         }
     }

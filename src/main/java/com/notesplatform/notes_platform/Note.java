@@ -1,6 +1,5 @@
 package com.notesplatform.notes_platform;
 
-
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -20,6 +19,9 @@ public class Note {
     private String storedName;      // random name on disk
     private Long uploaderId;
     private LocalDateTime uploadedAt = LocalDateTime.now();
+
+    @Column(columnDefinition = "TEXT")
+    private String summary;
 
     public Long getId() { return id; }
 
@@ -43,4 +45,7 @@ public class Note {
 
     public LocalDateTime getUploadedAt() { return uploadedAt; }
     public void setUploadedAt(LocalDateTime uploadedAt) { this.uploadedAt = uploadedAt; }
+
+    public String getSummary() { return summary; }
+    public void setSummary(String summary) { this.summary = summary; }
 }

@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -32,9 +33,11 @@ public class NoteController {
     private static final Set<String> KINDS = Set.of("NOTES", "PYQ");
 
     private final NoteRepository repo;
+    private final SummaryService summaryService;
 
-    public NoteController(NoteRepository repo) {
+    public NoteController(NoteRepository repo, SummaryService summaryService) {
         this.repo = repo;
+        this.summaryService = summaryService;
     }
 
     private Long loggedInUser(HttpSession session) {
@@ -115,7 +118,9 @@ public class NoteController {
                         "kind", n.getKind(),
                         "fileName", n.getOriginalName(),
                         "uploaderId", n.getUploaderId(),
-                        "uploadedAt", n.getUploadedAt().toString()))
+                        "uploadedAt", n.getUploadedAt().toString(),
+                        // Map.of null allow nahi karta, isliye khali string
+                        "summary", n.getSummary() == null ? "" : n.getSummary()))
                 .toList();
         return ResponseEntity.ok(out);
     }
@@ -140,5 +145,60 @@ public class NoteController {
                                 .filename(note.getOriginalName(), StandardCharsets.UTF_8)
                                 .build().toString())
                 .body(body);
+    }
+
+    /** Button click par AI summary. Pehli baar Gemini se banti hai, phir DB se aati hai. */
+    @PostMapping("/{id}/summary")
+    public ResponseEntity<?> summary(@PathVariable Long id, HttpSession session) {
+        if (loggedInUser(session) == null) return notLoggedIn();
+
+        Note note = repo.findById(id).orElse(null);
+        if (note == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Note nahi mila"));
+        }
+
+        // cache: pehle se bani hai to API call nahi hogi
+        if (note.getSummary() != null && !note.getSummary().isBlank()) {
+            return ResponseEntity.ok(Map.of("summary", note.getSummary()));
+        }
+
+        // summary abhi PDF aur DOCX ke liye
+        String storedLower = note.getStoredName().toLowerCase();
+        if (!storedLower.endsWith(".pdf") && !storedLower.endsWith(".docx")) {
+            return ResponseEntity.status(422).body(Map.of("error",
+                    "Summary abhi sirf PDF aur DOCX files ke liye available hai"));
+        }
+
+        Path path = UPLOAD_DIR.resolve(note.getStoredName()).normalize();
+        if (!path.startsWith(UPLOAD_DIR) || !Files.exists(path)) {
+            return ResponseEntity.status(404).body(Map.of("error", "File disk pe nahi mili"));
+        }
+
+        try {
+            String text = summaryService.extractText(Files.readAllBytes(path), note.getStoredName());
+            if (text.isBlank()) {
+                return ResponseEntity.status(422).body(Map.of("error",
+                        "Is PDF se text nahi nikla (scanned PDF ho sakta hai)"));
+            }
+            String summary = summaryService.summarize(text);
+            if (summary == null || summary.isBlank()) {
+                return ResponseEntity.status(502).body(Map.of("error", "AI ne khali jawab diya, dobara try karo"));
+            }
+            note.setSummary(summary);
+            repo.save(note);
+            return ResponseEntity.ok(Map.of("summary", summary));
+
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            return ResponseEntity.status(429).body(Map.of("error",
+                    "Abhi bohot requests hain, thodi der baad try karo"));
+        } catch (HttpClientErrorException e) {
+            // 400/403 aksar galat API key ya galat model naam ka matlab hota hai
+            e.printStackTrace();
+            return ResponseEntity.status(502).body(Map.of("error",
+                    "Gemini ne request reject ki (" + e.getStatusCode().value() + "). API key aur model naam check karo"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Summary nahi ban payi"));
+        }
     }
 }
